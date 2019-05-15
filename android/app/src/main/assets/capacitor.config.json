@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "appId": "io.ionic.starter",
-=======
   "appId": "com.hotelbooking.app",
->>>>>>> 5d3b6bba2192c91169076a012e4c1d810452bdcb
   "appName": "hotelBookingApp",
   "bundledWebRuntime": false,
   "webDir": "www"

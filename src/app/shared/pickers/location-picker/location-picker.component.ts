@@ -1,12 +1,13 @@
 import { Component, OnInit, EventEmitter, Output } from '@angular/core';
-import { ModalController, ActionSheetController } from '@ionic/angular';
+import { ModalController, ActionSheetController, AlertController } from '@ionic/angular';
 import { HttpClient } from '@angular/common/http';
 import { map, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { Plugins, Capacitor } from '@capacitor/core';
 
 import { MapModalComponent } from '../../map-modal/map-modal.component';
 import { environment } from '../../../../environments/environment';
-import { PlaceLocation } from '../../../places/location.model';
+import { PlaceLocation, Coordinates } from '../../../places/location.model';
 
 @Component({
   selector: 'app-location-picker',
@@ -20,7 +21,8 @@ export class LocationPickerComponent implements OnInit {
 
   constructor(private modalCtrl: ModalController,
               private http: HttpClient,
-              private actionSheetCtrl: ActionSheetController
+              private actionSheetCtrl: ActionSheetController,
+              private alertController: AlertController
               ) {}
 
   ngOnInit() {}
@@ -41,23 +43,59 @@ export class LocationPickerComponent implements OnInit {
   }
   
   private locateUser() {
-    
+    if (Capacitor.isPluginAvailable('Geolocation')) {
+      this.showErrorAlert();
+      return;
+    }
+    this.isLoading = true;
+    Plugins.Geolocation.getCurrentPosition()
+      .then(geoPosition => {
+        const coordinates: Coordinates = {
+          lat: geoPosition.coords.latitude,
+          lng: geoPosition.coords.longitude
+        };
+        this.createPlace(coordinates.lat, coordinates.lng);
+        this.isLoading = false;
+      })
+      .catch(err => {
+        this.isLoading = false;
+        this.showErrorAlert();
+      });
   }
-  
+
+  private showErrorAlert() {
+    this.alertController.create({
+      header: 'Could not fetch a location',
+      message: 'Please use the map to pick a location!'
+    });
+  }
+
   private openMap() {
     this.modalCtrl.create({ component: MapModalComponent }).then(modalEl => {
       modalEl.onDidDismiss().then(modalData => {
         if (!modalData.data) {
           return;
         }
-        const pickedLocation: PlaceLocation = {
+        const coordinates: Coordinates = {
           lat: modalData.data.lat,
           lng: modalData.data.lng,
-          address: null,
-          staticMapImageUrl: null
         };
-        this.isLoading = true;
-        this.getAddress(modalData.data.lat, modalData.data.lng)
+        this.createPlace(coordinates.lat, coordinates.lng);
+        };
+      });
+      modalEl.present();
+    })
+  }
+
+  private createPlace(lat: number, lng: number) {
+    const pickedLocation: PlaceLocation = {
+      lat: lat,
+      lng: lng,
+      address: null,
+      staticMapImageUrl: null
+    };
+    this.isLoading = true;
+    this.getAddress(lat, lng)
           .pipe(
             switchMap(address => {
               pickedLocation.address = address;
@@ -72,9 +110,6 @@ export class LocationPickerComponent implements OnInit {
             this.isLoading = false;
             this.locationPick.emit(pickedLocation);
           });
-      });
-      modalEl.present();
-    });
   }
 
   private getAddress(lat: number, lng: number) {
