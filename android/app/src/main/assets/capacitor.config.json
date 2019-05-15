@@ -1,0 +1,6 @@
+{
+  "appId": "com.hotelbooking.app",
+  "appName": "hotelBookingApp",
+  "bundledWebRuntime": false,
+  "webDir": "www"
+}
